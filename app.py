@@ -1,28 +1,58 @@
-import pandas as pd
 import streamlit as st
+import pandas as pd
 import geopandas as gpd
 import plotly.express as px
 import leafmap.foliumap as leafmap
+from PIL import Image
 
-st.set_page_config("Conservation Operations Dashboard", layout="wide")
+# --------------------------------------------------
+# PAGE CONFIG + LOGO
+# --------------------------------------------------
+st.set_page_config("Your Park Impact on Green Spaces", layout="wide")
 
-# ---------------------------
-# Load shapefile
-# ---------------------------
+logo = Image.open("yourpark.jpg")
+st.image(logo, width=200)
 
+# --------------------------------------------------
+# HEADERS + TITLE STYLE
+# --------------------------------------------------
+st.markdown(
+    """
+    <style>
+
+    .section-separator {
+        border-bottom: 4px solid #0047AB33;  /* soft blue */
+        margin-top: 40px;
+        margin-bottom: 25px;
+    }
+
+    .section-title {
+        font-size: 28px;
+        font-weight: 800;
+        color: #0047AB;
+        padding-bottom: 4px;
+        border-bottom: 3px solid #F4B000;
+        margin-bottom: 20px;
+    }
+
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+
+# --------------------------------------------------
+# LOAD DATA
+# --------------------------------------------------
 @st.cache_data
 def load_data():
-    # --- Operations (polygons, general work) ---
-    ops = gpd.read_file("data/operations.shp").to_crs(27700)
 
-    # --- Paths (lines, path maintenance) ---
+    ops = gpd.read_file("data/operations.shp").to_crs(27700)
     paths = gpd.read_file("data2/paths.shp").to_crs(27700)
 
-    # ---------------------------
-    # Normalise schemas
-    # ---------------------------
-
     for gdf in [ops, paths]:
+
         for col in ["Client", "Task_Type", "Site_Name"]:
             gdf[col] = (
                 gdf[col]
@@ -36,16 +66,14 @@ def load_data():
         gdf["feature_count"] = 1
 
         geom = gdf.geom_type
+
         gdf.loc[geom.isin(["Polygon", "MultiPolygon"]), "area_m2"] = (
             gdf.loc[geom.isin(["Polygon", "MultiPolygon"])].area
         )
+
         gdf.loc[geom.isin(["LineString", "MultiLineString"]), "length_m"] = (
             gdf.loc[geom.isin(["LineString", "MultiLineString"])].length
         )
-
-    # ---------------------------
-    # Combine datasets
-    # ---------------------------
 
     combined = gpd.GeoDataFrame(
         pd.concat([ops, paths], ignore_index=True),
@@ -54,24 +82,13 @@ def load_data():
 
     return combined
 
+
 gdf = load_data()
 
-# ---------------------------
-# Validate required fields
-# ---------------------------
 
-required_fields = ["Site_Name", "Task_Type", "Client"]
-missing = [c for c in required_fields if c not in gdf.columns]
-
-if missing:
-    st.error(f"Missing required fields: {missing}")
-    st.write("Columns found:", list(gdf.columns))
-    st.stop()
-
-# ---------------------------
-# Sidebar filters
-# ---------------------------
-
+# --------------------------------------------------
+# SIDEBAR FILTERS
+# --------------------------------------------------
 st.sidebar.title("Filters")
 
 clients = sorted(gdf["Client"].dropna().unique())
@@ -88,25 +105,25 @@ df = gdf[
     & gdf["Task_Type"].isin(task_sel)
 ].copy()
 
-# ---------------------------
-# KPI highlights
-# ---------------------------
 
-st.title("Your Parks Impact on Green Spaces")
-
+# --------------------------------------------------
+# KPI SECTION
+# --------------------------------------------------
 total_area = df["area_m2"].sum()
 total_length = df["length_m"].sum()
 
-k1, k2, k3, k4 = st.columns(4)
-k1.metric("Clients", df["Client"].nunique())
-k2.metric("Sites", df["Site_Name"].nunique())
-k3.metric("Area managed (m²)", f"{total_area:,.0f}")
-k4.metric("Path length (m)", f"{total_length:,.0f}")
+st.markdown("<div class='section-title'>💡 Your Park Impact on Green Spaces</div>", unsafe_allow_html=True)
 
-# ---------------------------
-# Summary table
-# ---------------------------
+k1, k2, k3 = st.columns(3)
+k1.metric("Sites", df["Site_Name"].nunique())
+k2.metric("Area managed (m²)", f"{total_area:,.0f}")
+k3.metric("Paths cleared (m)", f"{total_length:,.0f}")
 
+st.markdown("<div class='section-separator'></div>", unsafe_allow_html=True)
+
+# --------------------------------------------------
+# SUMMARY TABLE
+# --------------------------------------------------
 summary = (
     df.groupby(["Client", "Task_Type", "Site_Name", "Date"], as_index=False)
     .agg(
@@ -117,54 +134,48 @@ summary = (
 
 summary["Date"] = pd.to_datetime(summary["Date"], errors="coerce").dt.date
 
-st.subheader("Client → Task → Site totals")
-st.dataframe(summary, use_container_width=True)
+st.markdown("<p class='section-title'>📊 Reporting Totals</p>", unsafe_allow_html=True)
+st.dataframe(summary, use_container_width=True, hide_index=True)
 
+
+# --------------------------------------------------
+# CHARTS SPLIT
+# --------------------------------------------------
 area_tasks = summary[summary["area_m2"] > 0]
 length_tasks = summary[summary["length_m"] > 0]
 
-# ---------------------------
-# Charts
-# ---------------------------
-
-st.subheader("Benefits to Bristol & Bath")
+st.markdown("<p class='section-title'>🌿 Benefits to Bristol & Bath</p>", unsafe_allow_html=True)
 
 col1, col2 = st.columns(2)
 
 with col1:
-    st.markdown("### 🌿 Area-based Conservation Work (m²)")
-    fig_area = px.bar(
+    st.markdown("#### Area-based habitat care")
+    fig1 = px.bar(
         area_tasks.groupby("Task_Type", as_index=False).sum(),
         x="Task_Type",
         y="area_m2",
-        labels={"area_m2": "Area managed (m²)"},
     )
-    st.plotly_chart(fig_area, use_container_width=True)
+    st.plotly_chart(fig1, use_container_width=True)
 
 with col2:
-    st.markdown("### 🚶 Path & Linear Maintenance (m)")
-    fig_length = px.bar(
+    st.markdown("#### Path maintenance (meters cleared)")
+    fig2 = px.bar(
         length_tasks.groupby("Task_Type", as_index=False).sum(),
         x="Task_Type",
         y="length_m",
-        labels={"length_m": "Length maintained (m)"},
     )
-    st.plotly_chart(fig_length, use_container_width=True)
+    st.plotly_chart(fig2, use_container_width=True)
 
 
-# ---------------------------
-# Map
-# ---------------------------
+# --------------------------------------------------
+# MAP
+# --------------------------------------------------
+st.markdown("<p class='section-title'>🗺️ Map</p>", unsafe_allow_html=True)
 
-st.subheader("Map")
-
-# Prepare data for display
 map_df = df.copy()
-
 map_df["Area_m2"] = map_df["area_m2"].round(0)
 map_df["Length_m"] = map_df["length_m"].round(0)
 
-# Keep only fields we want users to see
 display_fields = [
     "Client",
     "Task_Type",
@@ -174,10 +185,7 @@ display_fields = [
     "geometry",
 ]
 
-map_df = map_df[display_fields]
-
-# Convert to GeoJSON for reliable popups
-geojson = map_df.to_crs(4326).__geo_interface__
+geojson = map_df[display_fields].to_crs(4326).__geo_interface__
 
 m = leafmap.Map()
 
@@ -194,4 +202,3 @@ m.add_geojson(
 )
 
 m.to_streamlit(height=520)
-
