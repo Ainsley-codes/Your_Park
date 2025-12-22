@@ -20,11 +20,6 @@ st.markdown(
     """
     <style>
 
-    .section-separator {
-        border-bottom: 4px solid #0047AB33;  /* soft blue */
-        margin-top: 40px;
-        margin-bottom: 25px;
-    }
 
     .section-title {
         font-size: 28px;
