@@ -107,7 +107,7 @@ df = gdf[
 total_area = df["area_m2"].sum()
 total_length = df["length_m"].sum()
 
-st.markdown("<div class='section-title'>💡 Your Park Impact on Green Spaces</div>", unsafe_allow_html=True)
+st.markdown("<div class='section-title'> Your Park Impact on Green Spaces</div>", unsafe_allow_html=True)
 
 k1, k2, k3 = st.columns(3)
 k1.metric("Sites", df["Site_Name"].nunique())
@@ -129,7 +129,7 @@ summary = (
 
 summary["Date"] = pd.to_datetime(summary["Date"], errors="coerce").dt.date
 
-st.markdown("<p class='section-title'>📊 Reporting Totals</p>", unsafe_allow_html=True)
+st.markdown("<p class='section-title'> Reporting Totals</p>", unsafe_allow_html=True)
 st.dataframe(summary, use_container_width=True, hide_index=True)
 
 
@@ -139,7 +139,7 @@ st.dataframe(summary, use_container_width=True, hide_index=True)
 area_tasks = summary[summary["area_m2"] > 0]
 length_tasks = summary[summary["length_m"] > 0]
 
-st.markdown("<p class='section-title'>🌿 Benefits to Bristol & Bath</p>", unsafe_allow_html=True)
+st.markdown("<p class='section-title'> Benefits to Bristol & Bath</p>", unsafe_allow_html=True)
 
 col1, col2 = st.columns(2)
 
@@ -165,7 +165,7 @@ with col2:
 # --------------------------------------------------
 # MAP
 # --------------------------------------------------
-st.markdown("<p class='section-title'>🗺️ Map</p>", unsafe_allow_html=True)
+st.markdown("<p class='section-title'> Map</p>", unsafe_allow_html=True)
 
 map_df = df.copy()
 map_df["Area_m2"] = map_df["area_m2"].round(0)
